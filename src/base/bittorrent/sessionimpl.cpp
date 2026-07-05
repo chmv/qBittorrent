@@ -114,6 +114,7 @@
 #include "tracker.h"
 #include "trackerentry.h"
 #include "trackerentrystatus.h"
+#include "uploadblockflagstore.h"
 
 using namespace std::chrono_literals;
 using namespace BitTorrent;
@@ -1612,14 +1613,25 @@ void SessionImpl::processNextResumeData(ResumeSessionContext *context)
     resumeData.ltAddTorrentParams.storage = customStorageConstructor;
 #endif
 
+    // Seed the upload-block flag before the torrent is created on the libtorrent
+    // thread, so its peer plugin sees the correct state from the very first peer.
+    if (resumeData.uploadBlocked)
+        m_uploadBlockFlagStore->setBlocked(torrentID, true);
+
     qDebug() << "Starting up torrent" << torrentID.toString() << "...";
     m_nativeSession->async_add_torrent(resumeData.ltAddTorrentParams);
-    m_addTorrentAlertHandlers.append([this, resumeData = std::move(resumeData)](const lt::add_torrent_alert *alert) mutable
+    m_addTorrentAlertHandlers.append([this, torrentID, resumeData = std::move(resumeData)](const lt::add_torrent_alert *alert) mutable
     {
         if (alert->error)
         {
             const QString msg = QString::fromStdString(alert->message());
             LogMsg(tr("Failed to load torrent. Reason: \"%1\"").arg(msg), Log::WARNING);
+
+            // The torrent was never created, so removeTorrent() will never run for it:
+            // reclaim the upload-block flag entry seeded before this (failed) add, else it
+            // would be orphaned and later reused by a same-session re-add of this info hash.
+            if (resumeData.uploadBlocked)
+                m_uploadBlockFlagStore->remove(torrentID);
         }
         else
         {
@@ -1773,7 +1785,9 @@ void SessionImpl::initializeNativeSession()
     if (isPeXEnabled())
         m_nativeSession->add_extension(&lt::create_ut_pex_plugin);
 
-    auto nativeSessionExtension = std::make_shared<NativeSessionExtension>();
+    m_uploadBlockFlagStore = std::make_shared<UploadBlockFlagStore>();
+
+    auto nativeSessionExtension = std::make_shared<NativeSessionExtension>(m_uploadBlockFlagStore);
     m_nativeSession->add_extension(nativeSessionExtension);
     m_nativeSessionExtension = nativeSessionExtension.get();
 }
@@ -2576,6 +2590,7 @@ bool SessionImpl::removeTorrent(const TorrentID &id, const TorrentRemoveOption d
 
     // Remove it from torrent resume directory
     m_resumeDataStorage->remove(torrentID);
+    m_uploadBlockFlagStore->remove(torrentID);
 
     LogMsg(tr("Torrent removed. Torrent: \"%1\"").arg(torrentName));
     delete torrent;
@@ -5289,6 +5304,11 @@ void SessionImpl::handleTorrentShareLimitChanged(TorrentImpl *const)
     updateShareLimitsTimer();
 }
 
+void SessionImpl::handleTorrentUploadBlockedChanged(const TorrentImpl *const torrent)
+{
+    m_uploadBlockFlagStore->setBlocked(torrent->id(), torrent->isUploadBlocked());
+}
+
 void SessionImpl::handleTorrentNameChanged(TorrentImpl *const)
 {
 }
@@ -5412,6 +5432,7 @@ void SessionImpl::handleTorrentInfoHashChanged(TorrentImpl *torrent, const InfoH
     {
         m_torrents[torrent->id()] = m_torrents.take(prevID);
         m_changedTorrentIDs[torrent->id()] = prevID;
+        m_uploadBlockFlagStore->changeTorrentID(prevID, currentID);
     }
 }
 

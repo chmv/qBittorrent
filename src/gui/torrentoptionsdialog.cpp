@@ -89,6 +89,7 @@ TorrentOptionsDialog::TorrentOptionsDialog(QWidget *parent, const QList<BitTorre
     bool allSameLSD = true;
     bool allSameSequential = true;
     bool allSameFirstLastPieces = true;
+    bool allSameUploadBlocked = true;
     bool allSameAutoTMM = true;
     bool allSameSavePath = true;
     bool allSameDownloadPath = true;
@@ -108,6 +109,7 @@ TorrentOptionsDialog::TorrentOptionsDialog(QWidget *parent, const QList<BitTorre
     const bool isFirstTorrentLSDDisabled = torrents[0]->isLSDDisabled();
     const bool isFirstTorrentSequentialEnabled = torrents[0]->isSequentialDownload();
     const bool isFirstTorrentFirstLastPiecesEnabled = torrents[0]->hasFirstLastPiecePriority();
+    const bool isFirstTorrentUploadBlocked = torrents[0]->isUploadBlocked();
 
     m_torrentIDs.reserve(torrents.size());
     for (const BitTorrent::Torrent *torrent : torrents)
@@ -200,6 +202,11 @@ TorrentOptionsDialog::TorrentOptionsDialog(QWidget *parent, const QList<BitTorre
         {
             if (torrent->hasFirstLastPiecePriority() != isFirstTorrentFirstLastPiecesEnabled)
                 allSameFirstLastPieces = false;
+        }
+        if (allSameUploadBlocked)
+        {
+            if (torrent->isUploadBlocked() != isFirstTorrentUploadBlocked)
+                allSameUploadBlocked = false;
         }
     }
 
@@ -351,6 +358,11 @@ TorrentOptionsDialog::TorrentOptionsDialog(QWidget *parent, const QList<BitTorre
     else
         m_ui->checkFirstLastPieces->setCheckState(Qt::PartiallyChecked);
 
+    if (allSameUploadBlocked)
+        m_ui->checkBlockUpload->setChecked(isFirstTorrentUploadBlocked);
+    else
+        m_ui->checkBlockUpload->setCheckState(Qt::PartiallyChecked);
+
     m_initialValues =
     {
         .savePath = m_ui->savePath->selectedPath(),
@@ -369,7 +381,8 @@ TorrentOptionsDialog::TorrentOptionsDialog(QWidget *parent, const QList<BitTorre
         .disablePEX = m_ui->checkDisablePEX->checkState(),
         .disableLSD = m_ui->checkDisableLSD->checkState(),
         .sequential = m_ui->checkSequential->checkState(),
-        .firstLastPieces = m_ui->checkFirstLastPieces->checkState()
+        .firstLastPieces = m_ui->checkFirstLastPieces->checkState(),
+        .blockUpload = m_ui->checkBlockUpload->checkState()
     };
 
     // Needs to be called after the initial values struct is initialized
@@ -491,6 +504,8 @@ void TorrentOptionsDialog::accept()
             torrent->setSequentialDownload(m_ui->checkSequential->isChecked());
         if (m_initialValues.firstLastPieces != m_ui->checkFirstLastPieces->checkState())
             torrent->setFirstLastPiecePriority(m_ui->checkFirstLastPieces->isChecked());
+        if (m_initialValues.blockUpload != m_ui->checkBlockUpload->checkState())
+            torrent->setUploadBlocked(m_ui->checkBlockUpload->isChecked());
     }
 
     QDialog::accept();

@@ -319,6 +319,7 @@ TorrentImpl::TorrentImpl(SessionImpl *session, const lt::torrent_handle &nativeH
     , m_contentLayout {params.contentLayout}
     , m_hasFinishedStatus {params.hasFinishedStatus}
     , m_hasFirstLastPiecePriority {params.firstLastPiecePriority}
+    , m_isUploadBlocked {params.uploadBlocked}
     , m_useAutoTMM {params.useAutoTMM}
     , m_isStopped {params.stopped}
     , m_sslParams {params.sslParameters}
@@ -1273,6 +1274,11 @@ bool TorrentImpl::hasFirstLastPiecePriority() const
     return m_hasFirstLastPiecePriority;
 }
 
+bool TorrentImpl::isUploadBlocked() const
+{
+    return m_isUploadBlocked;
+}
+
 TorrentState TorrentImpl::state() const
 {
     return m_state;
@@ -1756,6 +1762,20 @@ void TorrentImpl::setFirstLastPiecePriority(const bool enabled)
 
     LogMsg(tr("Download first and last piece first: %1, torrent: '%2'")
         .arg((enabled ? tr("On") : tr("Off")), name()));
+
+    deferredRequestResumeData();
+}
+
+void TorrentImpl::setUploadBlocked(const bool block)
+{
+    if (m_isUploadBlocked == block)
+        return;
+
+    m_isUploadBlocked = block;
+    m_session->handleTorrentUploadBlockedChanged(this);
+
+    LogMsg(tr("Upload blocked: %1, torrent: '%2'")
+        .arg((block ? tr("On") : tr("Off")), name()));
 
     deferredRequestResumeData();
 }
@@ -2317,6 +2337,7 @@ void TorrentImpl::prepareResumeData(lt::add_torrent_params params)
         .operatingMode = m_operatingMode,
         .useAutoTMM = m_useAutoTMM,
         .firstLastPiecePriority = m_hasFirstLastPiecePriority,
+        .uploadBlocked = m_isUploadBlocked,
         .hasFinishedStatus = m_hasFinishedStatus,
         .stopped = m_isStopped,
         .stopCondition = m_stopCondition,

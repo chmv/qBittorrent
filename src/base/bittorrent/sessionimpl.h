@@ -31,6 +31,7 @@
 
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -69,6 +70,7 @@ class FileSearcher;
 class FilterParserThread;
 class FreeDiskSpaceChecker;
 class NativeSessionExtension;
+class UploadBlockFlagStore;
 
 struct FileSearchResult;
 
@@ -462,6 +464,7 @@ namespace BitTorrent
         // Torrent interface
         void handleTorrentResumeDataRequested(const TorrentImpl *torrent);
         void handleTorrentShareLimitChanged(TorrentImpl *torrent);
+        void handleTorrentUploadBlockedChanged(const TorrentImpl *torrent);
         void handleTorrentNameChanged(TorrentImpl *torrent);
         void handleTorrentSavePathChanged(TorrentImpl *torrent);
         void handleTorrentCategoryChanged(TorrentImpl *torrent, const QString &oldCategory);
@@ -787,6 +790,7 @@ namespace BitTorrent
 
         lt::session *m_nativeSession = nullptr;
         NativeSessionExtension *m_nativeSessionExtension = nullptr;
+        std::shared_ptr<UploadBlockFlagStore> m_uploadBlockFlagStore;
 
         bool m_deferredConfigureScheduled = false;
         bool m_IPFilteringConfigured = false;

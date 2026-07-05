@@ -146,6 +146,7 @@ namespace
     const Column DB_COLUMN_SHARE_LIMITS_MODE = makeColumn(u"share_limits_mode"_s);
     const Column DB_COLUMN_SHARE_LIMIT_ACTION = makeColumn(u"share_limit_action"_s);
     const Column DB_COLUMN_HAS_OUTER_PIECES_PRIORITY = makeColumn(u"has_outer_pieces_priority"_s);
+    const Column DB_COLUMN_UPLOAD_BLOCKED = makeColumn(u"upload_blocked"_s);
     const Column DB_COLUMN_HAS_SEED_STATUS = makeColumn(u"has_seed_status"_s);
     const Column DB_COLUMN_OPERATING_MODE = makeColumn(u"operating_mode"_s);
     const Column DB_COLUMN_STOPPED = makeColumn(u"stopped"_s);
@@ -274,6 +275,25 @@ BitTorrent::DBResumeDataStorage::DBResumeDataStorage(const Path &dbPath, QObject
         const int dbVersion = (!db.record(DB_TABLE_TORRENTS).contains(DB_COLUMN_DOWNLOAD_PATH.name) ? 1 : currentDBVersion());
         if (dbVersion < DB_VERSION)
             updateDB(dbVersion);
+    }
+
+    // Fork-local column, kept independent of DB_VERSION so the shared version counter
+    // stays owned by upstream: its future bumps can never collide with this fork (no
+    // version-number clashes, no rebase conflicts on the migration chain). The column
+    // is declared in createDB() for fresh databases; here we idempotently add it to
+    // pre-existing ones. The pragma check touches only the schema, so it is a cheap
+    // no-op on every subsequent run.
+    {
+        QSqlQuery query {db};
+        const auto columnCheckQuery = u"SELECT COUNT(*) FROM pragma_table_info('%1') WHERE name = '%2';"_s
+                .arg(DB_TABLE_TORRENTS, DB_COLUMN_UPLOAD_BLOCKED.name);
+        if (query.exec(columnCheckQuery) && query.next() && (query.value(0).toInt() == 0))
+        {
+            const auto addColumnQuery = u"ALTER TABLE %1 ADD %2"_s
+                    .arg(quoted(DB_TABLE_TORRENTS), makeColumnDefinition(DB_COLUMN_UPLOAD_BLOCKED, u"INTEGER NOT NULL DEFAULT 0"_s));
+            if (!query.exec(addColumnQuery))
+                throw RuntimeError(query.lastError().text());
+        }
     }
 
     m_asyncWorker = new Worker(dbPath, m_dbLock, this);
@@ -478,6 +498,7 @@ void BitTorrent::DBResumeDataStorage::createDB() const
             makeColumnDefinition(DB_COLUMN_SHARE_LIMITS_MODE, u"TEXT NOT NULL DEFAULT `Default`"_s),
             makeColumnDefinition(DB_COLUMN_SHARE_LIMIT_ACTION, u"TEXT NOT NULL DEFAULT `Default`"_s),
             makeColumnDefinition(DB_COLUMN_HAS_OUTER_PIECES_PRIORITY, u"INTEGER NOT NULL"_s),
+            makeColumnDefinition(DB_COLUMN_UPLOAD_BLOCKED, u"INTEGER NOT NULL DEFAULT 0"_s),
             makeColumnDefinition(DB_COLUMN_HAS_SEED_STATUS, u"INTEGER NOT NULL"_s),
             makeColumnDefinition(DB_COLUMN_OPERATING_MODE, u"TEXT NOT NULL"_s),
             makeColumnDefinition(DB_COLUMN_STOPPED, u"INTEGER NOT NULL"_s),
@@ -643,6 +664,7 @@ LoadResumeDataResult DBResumeDataStorage::parseQueryResultRow(const QSqlQuery &q
     }
     resumeData.hasFinishedStatus = query.value(DB_COLUMN_HAS_SEED_STATUS.name).toBool();
     resumeData.firstLastPiecePriority = query.value(DB_COLUMN_HAS_OUTER_PIECES_PRIORITY.name).toBool();
+    resumeData.uploadBlocked = query.value(DB_COLUMN_UPLOAD_BLOCKED.name).toBool();
     resumeData.shareLimits = {
         .ratioLimit = query.value(DB_COLUMN_RATIO_LIMIT.name).toInt() / 1000.0,
         .seedingTimeLimit = query.value(DB_COLUMN_SEEDING_TIME_LIMIT.name).toInt(),
@@ -872,6 +894,7 @@ StoreJob::StoreJob(const TorrentID &torrentID, LoadTorrentParams resumeData)
             DB_COLUMN_SHARE_LIMITS_MODE,
             DB_COLUMN_SHARE_LIMIT_ACTION,
             DB_COLUMN_HAS_OUTER_PIECES_PRIORITY,
+            DB_COLUMN_UPLOAD_BLOCKED,
             DB_COLUMN_HAS_SEED_STATUS,
             DB_COLUMN_OPERATING_MODE,
             DB_COLUMN_STOPPED,
@@ -937,6 +960,7 @@ StoreJob::StoreJob(const TorrentID &torrentID, LoadTorrentParams resumeData)
             query.bindValue(DB_COLUMN_SHARE_LIMITS_MODE.placeholder, Utils::String::fromEnum(m_resumeData.shareLimits.mode));
             query.bindValue(DB_COLUMN_SHARE_LIMIT_ACTION.placeholder, Utils::String::fromEnum(m_resumeData.shareLimits.action));
             query.bindValue(DB_COLUMN_HAS_OUTER_PIECES_PRIORITY.placeholder, m_resumeData.firstLastPiecePriority);
+            query.bindValue(DB_COLUMN_UPLOAD_BLOCKED.placeholder, m_resumeData.uploadBlocked);
             query.bindValue(DB_COLUMN_HAS_SEED_STATUS.placeholder, m_resumeData.hasFinishedStatus);
             query.bindValue(DB_COLUMN_OPERATING_MODE.placeholder, Utils::String::fromEnum(m_resumeData.operatingMode));
             query.bindValue(DB_COLUMN_STOPPED.placeholder, m_resumeData.stopped);
