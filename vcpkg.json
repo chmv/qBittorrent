@@ -1,0 +1,12 @@
+{
+  "name": "qbittorrent",
+  "dependencies": [
+    "boost-circular-buffer",
+    "boost-multi-index",
+    "boost-stacktrace",
+    "libtorrent",
+    "openssl",
+    "zlib"
+  ],
+  "builtin-baseline": "d87340acc46bdeda386037b38aca30136e667e47"
+}
