@@ -1,0 +1,40 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "win-msvc",
+      "displayName": "Windows MSVC (vcpkg + Qt 6.10.3)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_TOOLCHAIN_FILE": "C:/Program Files/Microsoft Visual Studio/18/Enterprise/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/.vcpkg-overlay",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md-release",
+        "CMAKE_PREFIX_PATH": "C:/Projects3/Qt/6.10.3/msvc2022_64",
+        "TESTING": "ON"
+      }
+    },
+    {
+      "name": "win-msvc-static",
+      "displayName": "Windows MSVC static (self-contained, from-source Qt like the official release)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-static",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "C:/Program Files/Microsoft Visual Studio/18/Enterprise/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/.vcpkg-overlay",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-release",
+        "CMAKE_PREFIX_PATH": "C:/Projects3/Qt/6.10.3-static",
+        "MSVC_RUNTIME_DYNAMIC": "OFF",
+        "TESTING": "OFF",
+        "CMAKE_EXE_LINKER_FLAGS": "/FORCE:MULTIPLE"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "win-msvc", "configurePreset": "win-msvc" },
+    { "name": "win-msvc-static", "configurePreset": "win-msvc-static" }
+  ]
+}
