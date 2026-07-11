@@ -62,6 +62,7 @@ inline const QString KEY_TORRENT_FIRST_LAST_PIECE_PRIO = u"f_l_piece_prio"_s;
 inline const QString KEY_TORRENT_CATEGORY = u"category"_s;
 inline const QString KEY_TORRENT_TAGS = u"tags"_s;
 inline const QString KEY_TORRENT_SUPER_SEEDING = u"super_seeding"_s;
+inline const QString KEY_TORRENT_UPLOAD_BLOCKED = u"upload_blocked"_s;
 inline const QString KEY_TORRENT_FORCE_START = u"force_start"_s;
 inline const QString KEY_TORRENT_SAVE_PATH = u"save_path"_s;
 inline const QString KEY_TORRENT_DOWNLOAD_PATH = u"download_path"_s;

@@ -1,5 +1,10 @@
 # WebAPI Changelog
 
+## 2.17.0
+* Added per-torrent upload blocking control
+  * `torrents/setUploadBlocked` endpoint sets whether upload is blocked for the given torrents (params: `hashes`, `value`)
+  * `torrents/info` and `sync/maindata` now include a bool field `upload_blocked` reporting the per-torrent upload-blocked state
+
 ## 2.16.0
 * [#23989](https://github.com/qbittorrent/qBittorrent/pull/23989)
   * `sync/torrentPeers` endpoint now includes calculated `contribution` to a peer's progress

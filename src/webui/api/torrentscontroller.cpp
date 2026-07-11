@@ -1619,6 +1619,17 @@ void TorrentsController::setSuperSeedingAction()
     setResult(QString());
 }
 
+void TorrentsController::setUploadBlockedAction()
+{
+    requireParams({u"hashes"_s, u"value"_s});
+
+    const bool value {parseBool(params()[u"value"_s]).value_or(false)};
+    const QStringList hashes {params()[u"hashes"_s].split(u'|')};
+    applyToTorrents(hashes, [value](BitTorrent::Torrent *const torrent) { torrent->setUploadBlocked(value); });
+
+    setResult(QString());
+}
+
 void TorrentsController::setForceStartAction()
 {
     requireParams({u"hashes"_s, u"value"_s});
