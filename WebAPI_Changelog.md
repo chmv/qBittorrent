@@ -1,5 +1,8 @@
 # WebAPI Changelog
 
+## 2.18.0
+* `torrents/add` endpoint accepts a new optional bool parameter `uploadBlocked` that sets the per-torrent upload block for the added torrents; when the parameter is omitted, upload is blocked
+
 ## 2.17.0
 * Added per-torrent upload blocking control
   * `torrents/setUploadBlocked` endpoint sets whether upload is blocked for the given torrents (params: `hashes`, `value`)

@@ -353,6 +353,7 @@ void AddNewTorrentDialog::setCurrentContext(const std::shared_ptr<Context> conte
     m_ui->sequentialCheckBox->setChecked(addTorrentParams.sequential);
     m_ui->firstLastCheckBox->setChecked(addTorrentParams.firstLastPiecePriority);
     m_ui->skipCheckingCheckBox->setChecked(addTorrentParams.skipChecking);
+    m_ui->blockUploadCheckBox->setChecked(addTorrentParams.uploadBlocked.value_or(BitTorrent::DEFAULT_UPLOAD_BLOCKED));
     m_ui->tagsLineEdit->setText(Utils::String::joinIntoString(addTorrentParams.tags, u", "_s));
 
     // Load categories
@@ -450,6 +451,7 @@ void AddNewTorrentDialog::updateCurrentContext()
 
     addTorrentParams.sequential = m_ui->sequentialCheckBox->isChecked();
     addTorrentParams.firstLastPiecePriority = m_ui->firstLastCheckBox->isChecked();
+    addTorrentParams.uploadBlocked = m_ui->blockUploadCheckBox->isChecked();
 
     const bool useAutoTMM = (m_ui->comboTMM->currentIndex() == 1); // 1 is Automatic mode. Handle all non 1 values as manual mode.
     addTorrentParams.useAutoTMM = useAutoTMM;

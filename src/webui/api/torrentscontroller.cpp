@@ -1085,6 +1085,7 @@ void TorrentsController::addAction()
     const bool skipChecking = parseBool(params()[u"skip_checking"_s]).value_or(false);
     const bool seqDownload = parseBool(params()[u"sequentialDownload"_s]).value_or(false);
     const bool firstLastPiece = parseBool(params()[u"firstLastPiecePrio"_s]).value_or(false);
+    const std::optional<bool> uploadBlocked = parseBool(params()[u"uploadBlocked"_s]);
     const bool addForced = parseBool(params()[u"forced"_s]).value_or(false);
     const std::optional<bool> addToQueueTop = parseBool(params()[u"addToTopOfQueue"_s]);
     const std::optional<bool> addStopped = parseBool(params()[u"stopped"_s]);
@@ -1148,6 +1149,7 @@ void TorrentsController::addAction()
         .downloadPath = Path(downloadPath),
         .sequential = seqDownload,
         .firstLastPiecePriority = firstLastPiece,
+        .uploadBlocked = uploadBlocked,
         .addForced = addForced,
         .addToQueueTop = addToQueueTop,
         .addStopped = addStopped,

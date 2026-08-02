@@ -40,6 +40,7 @@ const QString PARAM_TAGS = u"tags"_s;
 const QString PARAM_SAVEPATH = u"save_path"_s;
 const QString PARAM_USEDOWNLOADPATH = u"use_download_path"_s;
 const QString PARAM_DOWNLOADPATH = u"download_path"_s;
+const QString PARAM_UPLOADBLOCKED = u"upload_blocked"_s;
 const QString PARAM_OPERATINGMODE = u"operating_mode"_s;
 const QString PARAM_QUEUETOP = u"add_to_top_of_queue"_s;
 const QString PARAM_STOPPED = u"stopped"_s;
@@ -115,6 +116,7 @@ BitTorrent::AddTorrentParams BitTorrent::parseAddTorrentParams(const QJsonObject
         .savePath = Path(jsonObj.value(PARAM_SAVEPATH).toString()),
         .useDownloadPath = getOptionalBool(jsonObj, PARAM_USEDOWNLOADPATH),
         .downloadPath = Path(jsonObj.value(PARAM_DOWNLOADPATH).toString()),
+        .uploadBlocked = getOptionalBool(jsonObj, PARAM_UPLOADBLOCKED),
         .addForced = (getEnum<TorrentOperatingMode>(jsonObj, PARAM_OPERATINGMODE) == TorrentOperatingMode::Forced),
         .addToQueueTop = getOptionalBool(jsonObj, PARAM_QUEUETOP),
         .addStopped = getOptionalBool(jsonObj, PARAM_STOPPED),
@@ -167,6 +169,8 @@ QJsonObject BitTorrent::serializeAddTorrentParams(const AddTorrentParams &params
         {PARAM_SSL_DHPARAMS, QString::fromLatin1(params.sslParameters.dhParams)}
     };
 
+    if (params.uploadBlocked)
+        jsonObj[PARAM_UPLOADBLOCKED] = *params.uploadBlocked;
     if (params.addToQueueTop)
         jsonObj[PARAM_QUEUETOP] = *params.addToQueueTop;
     if (params.addStopped)
