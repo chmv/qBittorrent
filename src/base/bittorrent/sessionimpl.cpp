@@ -2705,7 +2705,7 @@ LoadTorrentParams SessionImpl::initLoadTorrentParams(const AddTorrentParams &add
 
     loadTorrentParams.name = addTorrentParams.name;
     loadTorrentParams.firstLastPiecePriority = addTorrentParams.firstLastPiecePriority;
-    loadTorrentParams.uploadBlocked = true; // block upload for newly added torrents by default
+    loadTorrentParams.uploadBlocked = addTorrentParams.uploadBlocked.value_or(DEFAULT_UPLOAD_BLOCKED);
     loadTorrentParams.hasFinishedStatus = addTorrentParams.skipChecking; // do not react on 'torrent_finished_alert' when skipping
     loadTorrentParams.contentLayout = addTorrentParams.contentLayout.value_or(torrentContentLayout());
     loadTorrentParams.operatingMode = (addTorrentParams.addForced ? TorrentOperatingMode::Forced : TorrentOperatingMode::AutoManaged);
@@ -3011,13 +3011,30 @@ bool SessionImpl::addTorrent_impl(const TorrentDescriptor &source, const AddTorr
                 p.renamed_files[nativeIndexes[i]] = result.fileNames[i].toString().toStdString();
         }
 
+        // Seed the upload-block flag before the torrent is created on the libtorrent
+        // thread, so its peer plugin sees the correct state from the very first peer.
+        if (loadTorrentParams.uploadBlocked)
+            m_uploadBlockFlagStore->setBlocked(id, true);
+
         m_nativeSession->async_add_torrent(p);
-        m_addTorrentAlertHandlers.append([this, loadTorrentParams = std::move(loadTorrentParams)](const lt::add_torrent_alert *alert) mutable
+        m_addTorrentAlertHandlers.append([this, id, loadTorrentParams = std::move(loadTorrentParams)](const lt::add_torrent_alert *alert) mutable
         {
             if (alert->error)
             {
                 const QString msg = QString::fromStdString(alert->message());
                 LogMsg(tr("Failed to add torrent. Reason: \"%1\"").arg(msg), Log::WARNING);
+
+                // The failed add has to undo its own seeding — it created no torrent, so no
+                // removeTorrent() call is coming for it. If a torrent under this ID exists
+                // anyway, the failure was a duplicate: a concurrent add of the same info hash
+                // won the race (both passed the findTorrent() check before either alert
+                // arrived), the entry belongs to that live torrent, and the seed above may
+                // have overwritten its value — restore it. Otherwise the entry is orphaned:
+                // drop it, or a same-session re-add of this info hash would inherit it.
+                if (const TorrentImpl *torrent = m_torrents.value(id))
+                    m_uploadBlockFlagStore->setBlocked(id, torrent->isUploadBlocked());
+                else if (loadTorrentParams.uploadBlocked)
+                    m_uploadBlockFlagStore->remove(id);
 
                 const InfoHash infoHash = getInfoHash(alert->params);
                 const AddTorrentError::Kind errorKind = (alert->error == lt::errors::duplicate_torrent)
