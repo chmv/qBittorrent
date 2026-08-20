@@ -241,6 +241,7 @@ namespace BitTorrent
         virtual bool isErrored() const = 0;
         virtual bool isSequentialDownload() const = 0;
         virtual bool hasFirstLastPiecePriority() const = 0;
+        virtual bool isUploadBlocked() const = 0;
         virtual TorrentState state() const = 0;
         virtual bool hasMissingFiles() const = 0;
         virtual bool hasError() const = 0;
@@ -279,6 +280,7 @@ namespace BitTorrent
         virtual void setName(const QString &name) = 0;
         virtual void setSequentialDownload(bool enable) = 0;
         virtual void setFirstLastPiecePriority(bool enabled) = 0;
+        virtual void setUploadBlocked(bool block) = 0;
         virtual void stop() = 0;
         virtual void start(TorrentOperatingMode mode = TorrentOperatingMode::AutoManaged) = 0;
         virtual void forceReannounce(int index = -1) = 0;

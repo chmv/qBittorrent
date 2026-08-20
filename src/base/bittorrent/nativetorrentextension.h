@@ -28,21 +28,29 @@
 
 #pragma once
 
+#include <atomic>
+#include <memory>
+
 #include <libtorrent/extensions.hpp>
 #include <libtorrent/torrent_handle.hpp>
 
 #include "extensiondata.h"
 
+class UploadBlockFlagStore;
+
 class NativeTorrentExtension final : public lt::torrent_plugin
 {
 public:
-    NativeTorrentExtension(const lt::torrent_handle &torrentHandle, ExtensionData *data);
+    NativeTorrentExtension(const lt::torrent_handle &torrentHandle, ExtensionData *data
+        , const std::shared_ptr<UploadBlockFlagStore> &uploadBlockFlags);
     ~NativeTorrentExtension();
 
 private:
     void on_state(lt::torrent_status::state_t state) override;
+    std::shared_ptr<lt::peer_plugin> new_connection(const lt::peer_connection_handle &connection) override;
 
     lt::torrent_handle m_torrentHandle;
     lt::torrent_status::state_t m_state = lt::torrent_status::checking_resume_data;
     ExtensionData *m_data = nullptr;
+    std::shared_ptr<std::atomic<bool>> m_uploadBlockedFlag;
 };

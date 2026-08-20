@@ -101,5 +101,6 @@ private:
         Qt::CheckState disableLSD;
         Qt::CheckState sequential;
         Qt::CheckState firstLastPieces;
+        Qt::CheckState blockUpload;
     } m_initialValues;
 };

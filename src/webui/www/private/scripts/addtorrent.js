@@ -354,6 +354,7 @@ window.qBittorrent.AddTorrent ??= (() => {
 
     const submitForm = () => {
         document.getElementById("startTorrentHidden").value = document.getElementById("startTorrent").checked ? "false" : "true";
+        document.getElementById("uploadBlockedHidden").value = document.getElementById("uploadBlocked").checked;
 
         document.getElementById("dlLimitHidden").value = Number(document.getElementById("dlLimitText").value) * 1024;
         document.getElementById("upLimitHidden").value = Number(document.getElementById("upLimitText").value) * 1024;

@@ -107,6 +107,7 @@ private slots:
     void setDownloadPathAction();
     void setAutoManagementAction();
     void setSuperSeedingAction();
+    void setUploadBlockedAction();
     void setForceStartAction();
     void toggleSequentialDownloadAction();
     void toggleFirstLastPiecePrioAction();

@@ -28,9 +28,43 @@
 
 #include "nativetorrentextension.h"
 
+#include <libtorrent/peer_connection_handle.hpp>
 #include <libtorrent/torrent_status.hpp>
 
-NativeTorrentExtension::NativeTorrentExtension(const lt::torrent_handle &torrentHandle, ExtensionData *data)
+#include "infohash.h"
+#include "uploadblockflagstore.h"
+
+namespace
+{
+    // Per-peer plugin that makes a torrent behave as if it has no free upload slots:
+    // swallowing INTERESTED keeps the peer out of the (optimistic) unchoke candidates,
+    // swallowing REQUEST rejects allowed-fast pieces and any request from a peer that
+    // was already unchoked before the flag was set. Reads a shared flag with no locking.
+    class PeerUploadBlocker final : public lt::peer_plugin
+    {
+    public:
+        explicit PeerUploadBlocker(std::shared_ptr<std::atomic<bool>> flag)
+            : m_flag {std::move(flag)}
+        {
+        }
+
+    private:
+        bool on_interested() override
+        {
+            return m_flag->load(std::memory_order_relaxed);
+        }
+
+        bool on_request(const lt::peer_request &) override
+        {
+            return m_flag->load(std::memory_order_relaxed);
+        }
+
+        std::shared_ptr<std::atomic<bool>> m_flag;
+    };
+}
+
+NativeTorrentExtension::NativeTorrentExtension(const lt::torrent_handle &torrentHandle, ExtensionData *data
+    , const std::shared_ptr<UploadBlockFlagStore> &uploadBlockFlags)
     : m_torrentHandle {torrentHandle}
     , m_data {data}
 {
@@ -41,6 +75,13 @@ NativeTorrentExtension::NativeTorrentExtension(const lt::torrent_handle &torrent
         m_data->status = m_torrentHandle.status();
         m_data->trackers = m_torrentHandle.trackers();
         m_data->urlSeeds = m_torrentHandle.url_seeds();
+
+#ifdef QBT_USES_LIBTORRENT2
+        const BitTorrent::InfoHash infoHash {m_torrentHandle.info_hashes()};
+#else
+        const BitTorrent::InfoHash infoHash {m_torrentHandle.info_hash()};
+#endif
+        m_uploadBlockedFlag = uploadBlockFlags->flagFor(BitTorrent::TorrentID::fromInfoHash(infoHash));
     }
 
     on_state(m_data ? m_data->status.state : m_torrentHandle.status({}).state);
@@ -61,4 +102,12 @@ void NativeTorrentExtension::on_state(const lt::torrent_status::state_t state)
     }
 
     m_state = state;
+}
+
+std::shared_ptr<lt::peer_plugin> NativeTorrentExtension::new_connection(const lt::peer_connection_handle &)
+{
+    if (!m_uploadBlockedFlag)
+        return {};
+
+    return std::make_shared<PeerUploadBlocker>(m_uploadBlockedFlag);
 }

@@ -305,6 +305,7 @@ BitTorrent::LoadResumeDataResult BitTorrent::BencodeResumeDataStorage::loadTorre
     torrentParams.comment = fromLTString(resumeDataRoot.dict_find_string_value("qBt-comment"));
     torrentParams.hasFinishedStatus = resumeDataRoot.dict_find_int_value("qBt-seedStatus");
     torrentParams.firstLastPiecePriority = resumeDataRoot.dict_find_int_value("qBt-firstLastPiecePriority");
+    torrentParams.uploadBlocked = resumeDataRoot.dict_find_int_value("qBt-uploadBlocked");
 
     const lt::string_view ratioLimitString = resumeDataRoot.dict_find_string_value("qBt-ratioLimit");
     torrentParams.shareLimits = {
@@ -583,6 +584,7 @@ namespace
         data["qBt-seedStatus"] = m_resumeData.hasFinishedStatus;
         data["qBt-contentLayout"] = Utils::String::fromEnum(m_resumeData.contentLayout).toStdString();
         data["qBt-firstLastPiecePriority"] = m_resumeData.firstLastPiecePriority;
+        data["qBt-uploadBlocked"] = m_resumeData.uploadBlocked;
         data["qBt-stopCondition"] = Utils::String::fromEnum(m_resumeData.stopCondition).toStdString();
 
         if (!m_resumeData.sslParameters.certificate.isNull())

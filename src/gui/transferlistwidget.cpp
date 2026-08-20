@@ -757,6 +757,12 @@ void TransferListWidget::setSelectedFirstLastPiecePrio(const bool enabled) const
         torrent->setFirstLastPiecePriority(enabled);
 }
 
+void TransferListWidget::setSelectedTorrentsUploadBlocked(const bool blocked) const
+{
+    for (BitTorrent::Torrent *const torrent : asConst(getSelectedTorrents()))
+        torrent->setUploadBlocked(blocked);
+}
+
 void TransferListWidget::setSelectedAutoTMMEnabled(const bool enabled)
 {
     if (enabled)
@@ -1051,6 +1057,8 @@ void TransferListWidget::displayListMenu()
     connect(actionSequentialDownload, &QAction::triggered, this, &TransferListWidget::setSelectedTorrentsSequentialDownload);
     auto *actionFirstLastPiecePrio = new TriStateAction(tr("Download first and last pieces first"), listMenu);
     connect(actionFirstLastPiecePrio, &QAction::triggered, this, &TransferListWidget::setSelectedFirstLastPiecePrio);
+    auto *actionUploadBlocked = new TriStateAction(tr("Block upload"), listMenu);
+    connect(actionUploadBlocked, &QAction::triggered, this, &TransferListWidget::setSelectedTorrentsUploadBlocked);
     auto *actionAutoTMM = new TriStateAction(tr("Automatic Torrent Management"), listMenu);
     actionAutoTMM->setToolTip(tr("Automatic mode means that various torrent properties (e.g. save path) will be decided by the associated category"));
     connect(actionAutoTMM, &QAction::triggered, this, &TransferListWidget::setSelectedAutoTMMEnabled);
@@ -1066,6 +1074,8 @@ void TransferListWidget::displayListMenu()
     bool superSeedingMode = false;
     bool allSameSequentialDownloadMode = true, allSamePrioFirstlast = true;
     bool sequentialDownloadMode = false, prioritizeFirstLast = false;
+    bool allSameUploadBlocked = true;
+    bool uploadBlockedMode = false;
     bool oneHasMetadata = false, oneNotFinished = false;
     bool allSameCategory = true;
     bool allSameAutoTMM = true;
@@ -1103,6 +1113,11 @@ void TransferListWidget::displayListMenu()
 
         if (firstAutoTMM != torrent->isAutoTMMEnabled())
              allSameAutoTMM = false;
+
+        if (first)
+            uploadBlockedMode = torrent->isUploadBlocked();
+        else if (uploadBlockedMode != torrent->isUploadBlocked())
+            allSameUploadBlocked = false;
 
         if (torrent->hasMetadata())
             oneHasMetadata = true;
@@ -1176,6 +1191,7 @@ void TransferListWidget::displayListMenu()
         if (oneHasMetadata && oneNotFinished && !allSameSequentialDownloadMode
             && !allSamePrioFirstlast && !allSameSuperSeeding && !allSameCategory
             && needsStart && needsForce && needsStop && needsPreview && !allSameAutoTMM
+            && !allSameUploadBlocked
             && hasInfohashV1 && hasInfohashV2 && oneCanForceReannounce)
         {
             break;
@@ -1274,6 +1290,12 @@ void TransferListWidget::displayListMenu()
             : Qt::PartiallyChecked);
         listMenu->addAction(actionSuperSeedingMode);
     }
+
+    actionUploadBlocked->setCheckState(allSameUploadBlocked
+        ? (uploadBlockedMode ? Qt::Checked : Qt::Unchecked)
+        : Qt::PartiallyChecked);
+    listMenu->addAction(actionUploadBlocked);
+
     listMenu->addSeparator();
     bool addedPreviewAction = false;
     if (needsPreview)
