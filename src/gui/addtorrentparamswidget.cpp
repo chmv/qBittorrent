@@ -106,6 +106,10 @@ AddTorrentParamsWidget::AddTorrentParamsWidget(BitTorrent::AddTorrentParams addT
     m_ui->addToQueueTopComboBox->addItem(tr("Yes"), true);
     m_ui->addToQueueTopComboBox->addItem(tr("No"), false);
 
+    m_ui->uploadBlockedComboBox->addItem(tr("Default"));
+    m_ui->uploadBlockedComboBox->addItem(tr("Yes"), true);
+    m_ui->uploadBlockedComboBox->addItem(tr("No"), false);
+
     connect(m_ui->tagsEditButton, &QAbstractButton::clicked, this, [this]
     {
         auto *dlg = new TorrentTagsDialog(m_addTorrentParams.tags, this);
@@ -126,6 +130,7 @@ AddTorrentParamsWidget::AddTorrentParamsWidget(BitTorrent::AddTorrentParams addT
     miscParamsLayout->addWidget(m_ui->startTorrentWidget);
     miscParamsLayout->addWidget(m_ui->stopConditionWidget);
     miscParamsLayout->addWidget(m_ui->addToQueueTopWidget);
+    miscParamsLayout->addWidget(m_ui->uploadBlockedWidget);
 
     setAddTorrentParams(std::move(addTorrentParams));
 }
@@ -270,6 +275,18 @@ void AddTorrentParamsWidget::populate()
             m_addTorrentParams.addToQueueTop = std::nullopt;
         else
             m_addTorrentParams.addToQueueTop = data.toBool();
+    });
+
+    m_ui->uploadBlockedComboBox->disconnect(this);
+    m_ui->uploadBlockedComboBox->setCurrentIndex(m_addTorrentParams.uploadBlocked
+            ? m_ui->uploadBlockedComboBox->findData(*m_addTorrentParams.uploadBlocked) : 0);
+    connect(m_ui->uploadBlockedComboBox, &QComboBox::currentIndexChanged, this, [this]
+    {
+        const QVariant data = m_ui->uploadBlockedComboBox->currentData();
+        if (!data.isValid())
+            m_addTorrentParams.uploadBlocked = std::nullopt;
+        else
+            m_addTorrentParams.uploadBlocked = data.toBool();
     });
 
     resetShareLimitsWidgetDefaults();

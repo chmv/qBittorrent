@@ -120,6 +120,7 @@
 #include "tracker.h"
 #include "trackerentry.h"
 #include "trackerentrystatus.h"
+#include "uploadblockflagstore.h"
 
 using namespace std::chrono_literals;
 using namespace BitTorrent;
@@ -1725,14 +1726,25 @@ void SessionImpl::processNextResumeData(ResumeSessionContext *context)
     resumeData.ltAddTorrentParams.storage = customStorageConstructor;
 #endif
 
+    // Seed the upload-block flag before the torrent is created on the libtorrent
+    // thread, so its peer plugin sees the correct state from the very first peer.
+    if (resumeData.uploadBlocked)
+        m_uploadBlockFlagStore->setBlocked(torrentID, true);
+
     qDebug() << "Starting up torrent" << torrentID.toString() << "...";
     m_nativeSession->async_add_torrent(resumeData.ltAddTorrentParams);
-    m_addTorrentAlertHandlers.append([this, resumeData = std::move(resumeData)](const lt::add_torrent_alert *alert) mutable
+    m_addTorrentAlertHandlers.append([this, torrentID, resumeData = std::move(resumeData)](const lt::add_torrent_alert *alert) mutable
     {
         if (alert->error)
         {
             const QString msg = QString::fromStdString(alert->message());
             LogMsg(tr("Failed to load torrent. Reason: \"%1\"").arg(msg), Log::WARNING);
+
+            // The torrent was never created, so removeTorrent() will never run for it:
+            // reclaim the upload-block flag entry seeded before this (failed) add, else it
+            // would be orphaned and later reused by a same-session re-add of this info hash.
+            if (resumeData.uploadBlocked)
+                m_uploadBlockFlagStore->remove(torrentID);
         }
         else
         {
@@ -1890,7 +1902,9 @@ void SessionImpl::initializeNativeSession()
         m_nativeSession->add_extension(&lt::create_i2p_pex_plugin);
 #endif
 
-    auto nativeSessionExtension = std::make_shared<NativeSessionExtension>();
+    m_uploadBlockFlagStore = std::make_shared<UploadBlockFlagStore>();
+
+    auto nativeSessionExtension = std::make_shared<NativeSessionExtension>(m_uploadBlockFlagStore);
     m_nativeSession->add_extension(nativeSessionExtension);
     m_nativeSessionExtension = nativeSessionExtension.get();
 }
@@ -2706,6 +2720,7 @@ bool SessionImpl::removeTorrent(const TorrentID &id, const TorrentRemoveOption d
 
     // Remove it from torrent resume directory
     m_resumeDataStorage->remove(torrentID);
+    m_uploadBlockFlagStore->remove(torrentID);
 
     if (removeTorrentFileBackup())
     {
@@ -2836,6 +2851,7 @@ LoadTorrentParams SessionImpl::initLoadTorrentParams(const AddTorrentParams &add
 
     loadTorrentParams.name = addTorrentParams.name;
     loadTorrentParams.firstLastPiecePriority = addTorrentParams.firstLastPiecePriority;
+    loadTorrentParams.uploadBlocked = addTorrentParams.uploadBlocked.value_or(DEFAULT_UPLOAD_BLOCKED);
     loadTorrentParams.hasFinishedStatus = addTorrentParams.seedMode; // do not react on 'torrent_finished_alert' when skipping
     loadTorrentParams.contentLayout = addTorrentParams.contentLayout.value_or(torrentContentLayout());
     loadTorrentParams.operatingMode = (addTorrentParams.addForced ? TorrentOperatingMode::Forced : TorrentOperatingMode::AutoManaged);
@@ -3142,13 +3158,31 @@ bool SessionImpl::addTorrent_impl(const TorrentDescriptor &torrentDescr, const A
                 p.renamed_files[nativeIndexes[i]] = result.fileNames[i].toString().toStdString();
         }
 
+        // Seed the upload-block flag before the torrent is created on the libtorrent
+        // thread, so its peer plugin sees the correct state from the very first peer.
+        if (loadTorrentParams.uploadBlocked)
+            m_uploadBlockFlagStore->setBlocked(id, true);
+
         m_nativeSession->async_add_torrent(p);
         m_addTorrentAlertHandlers.append(
-            [this, torrentDescr, loadTorrentParams = std::move(loadTorrentParams)](const lt::add_torrent_alert *alert) mutable
+            [this, id, torrentDescr, loadTorrentParams = std::move(loadTorrentParams)](const lt::add_torrent_alert *alert) mutable
         {
             if (alert->error)
             {
                 const QString msg = QString::fromStdString(alert->message());
+
+                // The failed add has to undo its own seeding — it created no torrent, so no
+                // removeTorrent() call is coming for it. If a torrent under this ID exists
+                // anyway, the failure was a duplicate: a concurrent add of the same info hash
+                // won the race (both passed the findTorrent() check before either alert
+                // arrived), the entry belongs to that live torrent, and the seed above may
+                // have overwritten its value — restore it. Otherwise the entry is orphaned:
+                // drop it, or a same-session re-add of this info hash would inherit it.
+                if (const TorrentImpl *torrent = m_torrents.value(id))
+                    m_uploadBlockFlagStore->setBlocked(id, torrent->isUploadBlocked());
+                else if (loadTorrentParams.uploadBlocked)
+                    m_uploadBlockFlagStore->remove(id);
+
                 const InfoHash infoHash = getInfoHash(alert->params);
                 if (Torrent *torrent = findTorrent(infoHash); (alert->error == lt::errors::duplicate_torrent) && torrent)
                 {
@@ -5553,6 +5587,11 @@ void SessionImpl::handleTorrentShareLimitChanged(TorrentImpl *const)
     updateShareLimitsTimer();
 }
 
+void SessionImpl::handleTorrentUploadBlockedChanged(const TorrentImpl *const torrent)
+{
+    m_uploadBlockFlagStore->setBlocked(torrent->id(), torrent->isUploadBlocked());
+}
+
 void SessionImpl::handleTorrentNameChanged(TorrentImpl *const)
 {
 }
@@ -5716,6 +5755,7 @@ void SessionImpl::handleTorrentInfoHashChanged(TorrentImpl *torrent, const InfoH
     {
         m_torrents[torrent->id()] = m_torrents.take(prevID);
         m_changedTorrentIDs[torrent->id()] = prevID;
+        m_uploadBlockFlagStore->changeTorrentID(prevID, currentID);
     }
 }
 
@@ -5860,6 +5900,18 @@ void SessionImpl::processPendingFinishedTorrents()
     {
         LogMsg(tr("Torrent download finished. Torrent: \"%1\"").arg(torrent->name()));
         emit torrentFinished(torrent);
+
+        // An upload-blocked torrent has nothing to do in the seeding phase: stop it
+        // right away instead of leaving it to announce as a seed and hold peer
+        // connections. Unlike share limits, this deliberately applies to forced
+        // torrents too: forcing protects the download from queue/limits, and the
+        // download has just finished.
+        if (torrent->isUploadBlocked() && !torrent->isStopped())
+        {
+            torrent->stop();
+            LogMsg(tr("Upload is blocked. Torrent stopped upon finishing. Torrent: \"%1\"").arg(torrent->name()));
+            continue;
+        }
 
         processTorrentShareLimits(torrent);
     }

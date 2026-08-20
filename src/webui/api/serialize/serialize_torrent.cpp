@@ -146,6 +146,7 @@ QVariantMap serialize(const BitTorrent::Torrent &torrent)
         {KEY_TORRENT_CATEGORY, torrent.category()},
         {KEY_TORRENT_TAGS, Utils::String::joinIntoString(torrent.tags(), u", "_s)},
         {KEY_TORRENT_SUPER_SEEDING, torrent.superSeeding()},
+        {KEY_TORRENT_UPLOAD_BLOCKED, torrent.isUploadBlocked()},
         {KEY_TORRENT_FORCE_START, torrent.isForced()},
         {KEY_TORRENT_SAVE_PATH, torrent.savePath().toString()},
         {KEY_TORRENT_DOWNLOAD_PATH, torrent.downloadPath().toString()},

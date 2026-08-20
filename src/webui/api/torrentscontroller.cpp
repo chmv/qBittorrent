@@ -1143,6 +1143,7 @@ void TorrentsController::addAction()
     const bool seedMode = parseBool(params()[u"seedMode"_s]).value_or(false);
     const bool seqDownload = parseBool(params()[u"sequentialDownload"_s]).value_or(false);
     const bool firstLastPiece = parseBool(params()[u"firstLastPiecePrio"_s]).value_or(false);
+    const std::optional<bool> uploadBlocked = parseBool(params()[u"uploadBlocked"_s]);
     const bool addForced = parseBool(params()[u"forced"_s]).value_or(false);
     const std::optional<bool> addToQueueTop = parseBool(params()[u"addToTopOfQueue"_s]);
     const std::optional<bool> addStopped = parseBool(params()[u"stopped"_s]);
@@ -1206,6 +1207,7 @@ void TorrentsController::addAction()
         .downloadPath = Path(downloadPath),
         .sequential = seqDownload,
         .firstLastPiecePriority = firstLastPiece,
+        .uploadBlocked = uploadBlocked,
         .addForced = addForced,
         .addToQueueTop = addToQueueTop,
         .addStopped = addStopped,
@@ -1673,6 +1675,17 @@ void TorrentsController::setSuperSeedingAction()
     const bool value {parseBool(params()[u"value"_s]).value_or(false)};
     const QStringList hashes {params()[u"hashes"_s].split(u'|')};
     applyToTorrents(hashes, [value](BitTorrent::Torrent *const torrent) { torrent->setSuperSeeding(value); });
+
+    setResult(QString());
+}
+
+void TorrentsController::setUploadBlockedAction()
+{
+    requireParams({u"hashes"_s, u"value"_s});
+
+    const bool value {parseBool(params()[u"value"_s]).value_or(false)};
+    const QStringList hashes {params()[u"hashes"_s].split(u'|')};
+    applyToTorrents(hashes, [value](BitTorrent::Torrent *const torrent) { torrent->setUploadBlocked(value); });
 
     setResult(QString());
 }

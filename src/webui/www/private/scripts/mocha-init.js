@@ -118,6 +118,7 @@ let shareRatioFN = () => {};
 let toggleSequentialDownloadFN = () => {};
 let toggleFirstLastPiecePrioFN = () => {};
 let setSuperSeedingFN = () => {};
+let setUploadBlockedFN = () => {};
 let setForceStartFN = () => {};
 let StatisticsLinkFN = () => {};
 let downloadLimitFN = () => {};
@@ -447,6 +448,20 @@ const initializeWindows = () => {
         const hashes = torrentsTable.selectedRowsIds();
         if (hashes.length) {
             fetch("api/v2/torrents/setSuperSeeding", {
+                method: "POST",
+                body: new URLSearchParams({
+                    hashes: hashes.join("|"),
+                    value: val
+                })
+            });
+            updateMainData();
+        }
+    };
+
+    setUploadBlockedFN = (val) => {
+        const hashes = torrentsTable.selectedRowsIds();
+        if (hashes.length) {
+            fetch("api/v2/torrents/setUploadBlocked", {
                 method: "POST",
                 body: new URLSearchParams({
                     hashes: hashes.join("|"),

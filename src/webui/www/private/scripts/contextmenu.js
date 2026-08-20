@@ -344,6 +344,7 @@ window.qBittorrent.ContextMenu ??= (() => {
             let there_are_force_start = false;
             let all_are_super_seeding = true;
             let all_are_auto_tmm = true;
+            let all_are_upload_blocked = true;
             let thereAreV1Hashes = false;
             let thereAreV2Hashes = false;
             const tagCount = new Map();
@@ -380,6 +381,9 @@ window.qBittorrent.ContextMenu ??= (() => {
 
                 if (data["auto_tmm"] !== true)
                     all_are_auto_tmm = false;
+
+                if (data["upload_blocked"] !== true)
+                    all_are_upload_blocked = false;
 
                 if (data["infohash_v1"] !== "")
                     thereAreV1Hashes = true;
@@ -457,6 +461,7 @@ window.qBittorrent.ContextMenu ??= (() => {
                 this.hideItem("start");
 
             this.setItemChecked("autoTorrentManagement", all_are_auto_tmm);
+            this.setItemChecked("uploadBlocked", all_are_upload_blocked);
 
             this.setEnabled("copyInfohash1", thereAreV1Hashes);
             this.setEnabled("copyInfohash2", thereAreV2Hashes);

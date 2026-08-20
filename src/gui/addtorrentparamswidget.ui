@@ -333,6 +333,44 @@
        </item>
       </layout>
      </widget>
+     <widget class="QWidget" name="uploadBlockedWidget" native="true">
+      <property name="geometry">
+       <rect>
+        <x>9</x>
+        <y>151</y>
+        <width>187</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="uploadBlockedLayout">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="uploadBlockedLabel">
+         <property name="text">
+          <string>Block upload:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="uploadBlockedComboBox">
+         <property name="currentIndex">
+          <number>-1</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
      <widget class="QCheckBox" name="seedModeCheckBox">
       <property name="geometry">
        <rect>

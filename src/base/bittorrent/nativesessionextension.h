@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include <libtorrent/extensions.hpp>
 #include <libtorrent/fwd.hpp>
 #include <libtorrent/session_handle.hpp>
@@ -36,9 +38,13 @@
 
 #include "extensiondata.h"
 
+class UploadBlockFlagStore;
+
 class NativeSessionExtension final : public lt::plugin
 {
 public:
+    explicit NativeSessionExtension(std::shared_ptr<UploadBlockFlagStore> uploadBlockFlags);
+
     bool isSessionListening() const;
 
 private:
@@ -53,4 +59,6 @@ private:
 
     mutable QReadWriteLock m_lock;
     bool m_isSessionListening = false;
+
+    std::shared_ptr<UploadBlockFlagStore> m_uploadBlockFlags;
 };

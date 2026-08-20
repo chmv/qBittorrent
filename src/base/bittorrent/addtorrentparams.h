@@ -47,6 +47,10 @@ namespace BitTorrent
 {
     enum class DownloadPriority;
 
+    // Upload is opt-in in this fork: a torrent added without an explicit
+    // choice starts with its upload blocked.
+    inline const bool DEFAULT_UPLOAD_BLOCKED = true;
+
     struct AddTorrentParams
     {
         QString name;
@@ -57,6 +61,7 @@ namespace BitTorrent
         Path downloadPath;
         bool sequential = false;
         bool firstLastPiecePriority = false;
+        std::optional<bool> uploadBlocked;
         bool addForced = false;
         std::optional<bool> addToQueueTop;
         std::optional<bool> addStopped;
