@@ -5599,6 +5599,18 @@ void SessionImpl::processPendingFinishedTorrents()
         if (const Path exportPath = finishedTorrentExportDirectory(); !exportPath.isEmpty())
             exportTorrentFile(torrent, exportPath);
 
+        // An upload-blocked torrent has nothing to do in the seeding phase: stop it
+        // right away instead of leaving it to announce as a seed and hold peer
+        // connections. Unlike share limits, this deliberately applies to forced
+        // torrents too: forcing protects the download from queue/limits, and the
+        // download has just finished.
+        if (torrent->isUploadBlocked() && !torrent->isStopped())
+        {
+            torrent->stop();
+            LogMsg(tr("Upload is blocked. Torrent stopped upon finishing. Torrent: \"%1\"").arg(torrent->name()));
+            continue;
+        }
+
         processTorrentShareLimits(torrent);
     }
 
