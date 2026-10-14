@@ -3,7 +3,9 @@
 #
 # Prerequisite: a static Qt at $qtStatic. If missing, run build-qt-static.ps1 first
 # (compiles Qt from source -- long, one-time). qBittorrent's own dependencies
-# (libtorrent/boost/openssl/zlib) come from vcpkg (binary cache -> fast).
+# (libtorrent/boost/openssl/zlib) come from vcpkg. Its binary cache makes that
+# fast, except after an MSVC toolset update: the ABI hash includes the compiler,
+# so every port rebuilds from source (whole run ~11 min instead of a few).
 #
 # Machine-specific paths below -- adjust if Visual Studio or the repo move.
 
@@ -18,6 +20,7 @@ if (-not (Test-Path "$qtStatic\lib\Qt6Core.lib")) {
 }
 
 # 1. Enter the MSVC developer environment (cl/link + INCLUDE/LIB).
+#    It prints "'vswhere.exe' is not recognized" -- harmless, the shell still initializes.
 & "$vsRoot\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
 
 # 2. Put the VS-bundled CMake + Ninja on PATH (not there by default).

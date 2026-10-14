@@ -14,6 +14,7 @@ $qtBin  = 'C:\Projects3\Qt\6.10.3\msvc2022_64\bin'
 $repo   = 'C:\Projects\qBittorrent'
 
 # 1. Enter the MSVC developer environment (cl/link + INCLUDE/LIB).
+#    It prints "'vswhere.exe' is not recognized" -- harmless, the shell still initializes.
 & "$vsRoot\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
 
 # 2. PATH: Qt bin (dynamic Qt DLLs -- needed to run the result) + VS-bundled CMake + Ninja.
