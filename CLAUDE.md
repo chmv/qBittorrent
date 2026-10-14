@@ -108,8 +108,8 @@ Python "nova3" scripts (`src/searchengine/nova3/`) are embedded via `searchengin
 
 This working copy is the `chmv` fork: `origin` = `chmv/qBittorrent`, `upstream` = official `qbittorrent/qBittorrent`. `master` mirrors upstream's master (refreshed via GitHub "Sync fork", then `git fetch origin`). `chmv-master` is the working branch: a short patch stack riding on `origin/master`, one commit per topic.
 
-- **Sync is always a rebase** onto `origin/master`, never a merge — `git log origin/master..chmv-master` must stay exactly the fork delta. Push after rebase: `git push --force-with-lease origin chmv-master`.
-- **Git split** (exception to the global "no git commands" rule): Claude runs sync operations — fetch, rebase, conflicts, branch bookkeeping — everything except `push`, which stays with the user, as do commits of new work.
+- **Sync is always a rebase** onto `origin/master`, never a merge — `git log origin/master..chmv-master` must stay exactly the fork delta. Push after rebase: `git push --force-with-lease origin chmv-master`. Then move local `master` along: `git branch -f master origin/master`.
+- **Git split**: git is read-only here as everywhere. Claude runs a sync (fetch, rebase, conflicts, moving `master`) only when asked in that session, and such a request never covers `push`.
 - **Patch hygiene**: follow-up work is committed on top as usual and folded into its topic commit at the next sync.
 - **Fork patches never touch upstream's `WebAPI_Changelog.md` or `API_VERSION`** — claiming upstream's future numbers would mislead version-gated clients. Fork API changes go to `WebAPI_Changelog.fork.md` (own `fork-N` numbering); the server keeps reporting upstream's API version.
 - `git rerere` is enabled — a rebase conflict resolved once replays automatically on later syncs.
