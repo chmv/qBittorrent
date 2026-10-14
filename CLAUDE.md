@@ -20,7 +20,7 @@ build/test/testpath testConstructors        # run one test function (QtTest CLI)
 
 - Feature options (root `CMakeLists.txt`): `GUI` (ON), `WEBUI` (ON), `TESTING` (**OFF** — tests don't exist without `-DTESTING=ON`), `STACKTRACE` (ON), `MSVC_RUNTIME_DYNAMIC` (ON, MSVC only).
 - `-DGUI=OFF` produces `qbittorrent-nox`. GUI vs headless is a **compile-time** decision (`DISABLE_GUI` / `DISABLE_WEBUI` defines throughout the code); there is no runtime switch.
-- Upstream commits no CMake presets or dependency manifest; this fork does (`vcpkg.json`, Windows build presets and scripts). CI builds with warnings-as-errors (`-Werror` / MSVC `/WX`) and `-DQT_FORCE_ASSERTS` — a warning that builds clean locally will fail CI.
+- Upstream commits no CMake presets or dependency manifest; this fork does: `vcpkg.json`, `CMakeUserPresets.json`, `build.ps1` (dev build, dynamic Qt) and `build-static.ps1` (the single self-contained exe the user runs; details in each script's header). CI builds with warnings-as-errors (`-Werror` / MSVC `/WX`) and `-DQT_FORCE_ASSERTS` — a warning that builds clean locally will fail CI.
 - **Windows/MSVC** (verified with VS 2022+/2026 + Qt via [`aqt`](https://github.com/miurahr/aqtinstall)): configure with a vcpkg toolchain and point CMake at Qt, e.g. `-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static-md -DCMAKE_PREFIX_PATH=<qt>/msvc2022_64`. The `x64-windows-static-md` triplet (static libs + dynamic CRT) is what `MSVC_RUNTIME_DYNAMIC=ON` expects; a plain `x64-windows-static` (`/MT`) triplet causes `RuntimeLibrary` mismatch link errors.
 - vcpkg **manifest mode** (`vcpkg.json`): `libtorrent`, `openssl`, `zlib` are not sufficient — qBittorrent `#include`s Boost directly, so the manifest must also list `boost-circular-buffer`, `boost-multi-index`, and `boost-stacktrace` (the last only needed while `STACKTRACE=ON`). libtorrent pulls in boost-asio/-system/etc. but none of these.
 - Qt from `aqt`/the official installer is **dynamically linked**: put `<qt>/msvc2022_64/bin` on `PATH` before running the app *or the tests*, otherwise the executables exit immediately with `0xc0000135` (STATUS_DLL_NOT_FOUND). The vcpkg deps use the static triplet, so Qt is the only runtime-DLL dependency.
@@ -38,7 +38,7 @@ npm test          # vitest
 ### Python
 
 - Search engine (`src/searchengine/nova3/` — the only Python lint config in the repo): `uv sync`, then `uv run just check` (mypy + pyright, both strict), `uv run just lint`, `uv run just format`.
-- Other repo scripts are checked in CI with pyflakes, bandit, pycodestyle (`--max-line-length=1000`), isort (see `.github/workflows/ci_python.yaml`).
+- Other repo scripts are checked in CI with mypy + pyright (strict), ruff, pyflakes, bandit, pycodestyle (`--max-line-length=1000`) — see `.github/workflows/ci_python.yaml`.
 
 ### File health
 
@@ -73,7 +73,7 @@ npm test          # vitest
 
 ### Search engine
 
-Python "nova3" scripts (`src/searchengine/nova3/`) are embedded via `searchengine.qrc` and copied into the user profile at runtime; searches spawn an external Python interpreter (>= 3.13, enforced in `src/base/utils/foreignapps.h` — the `requires-python = ">=3.9"` in nova3's pyproject.toml is not the real floor). Search plugins (`engines/*.py`) are not part of this repo. Per `src/searchengine/README.md`, this subsystem is under review — only major-bug fixes are accepted.
+Python "nova3" scripts (`src/searchengine/nova3/`) are embedded via `searchengine.qrc` and copied into the user profile at runtime; searches spawn an external Python interpreter (>= 3.13, enforced in `src/base/utils/foreignapps.h`). Search plugins (`engines/*.py`) are not part of this repo. Per `src/searchengine/README.md`, this subsystem is under review — only major-bug fixes are accepted.
 
 ### Generated files
 
